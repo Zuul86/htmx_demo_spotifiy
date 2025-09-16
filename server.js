@@ -139,22 +139,22 @@ app.get('/tracks/:playlistId', async (req, res) => {
   if (!accessToken) {
     return res.status(401).send('Unauthorized. Please <a href="/login">log in</a>.');
   }
- 
+
   const playlistId = req.params.playlistId;
  
   try {
-    const tracksResponse = await axios.get(`https://developer.spotify.com/documentation/web-api/concepts/authorization/$${playlistId}/tracks`, {
+    const tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
     });
  
     const tracks = tracksResponse.data.items;
-    let html = '<table><thead><tr><th>Song Title</th><th>Artist</th><th>Album</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Song Title</th><th>Artist</th><th>Album</th><th>Date Released</th></tr></thead><tbody>';
     tracks.forEach(item => {
       const track = item.track;
       const artists = track.artists.map(artist => artist.name).join(', ');
-      html += `<tr><td>${track.name}</td><td>${artists}</td><td>${track.album.name}</td></tr>`;
+      html += `<tr><td>${track.name}</td><td>${artists}</td><td>${track.album.name}</td><td>${track.album.release_date}</td></tr>`;
     });
     html += '</tbody></table>';
  
