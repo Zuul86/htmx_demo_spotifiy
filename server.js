@@ -2,19 +2,19 @@ const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
 require('dotenv').config();
- 
+
 const app = express();
 app.set('view engine', 'ejs');
-app.set('views','./views');
+app.set('views', './views');
 const port = 8888;
- 
+
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
- 
+
 // Store access token in a simple in-memory variable for this example
 let accessToken = '';
- 
+
 // Helper function to generate a random string
 const generateRandomString = (length) => {
   let text = '';
@@ -24,17 +24,17 @@ const generateRandomString = (length) => {
   }
   return text;
 };
- 
+
 // Main HTML page with HTMX
 app.get('/', (req, res) => {
   res.render('index');
 });
- 
+
 // Route to start the Spotify authorization process
 app.get('/login', (req, res) => {
   const state = generateRandomString(16);
   const scope = 'playlist-read-private playlist-read-collaborative';
- 
+
   res.redirect('https://accounts.spotify.com/authorize?' +
     querystring.stringify({
       response_type: 'code',
@@ -44,16 +44,16 @@ app.get('/login', (req, res) => {
       state: state
     }));
 });
- 
+
 // Route to handle the callback and get the access token
 app.get('/callback', async (req, res) => {
   const code = req.query.code || null;
   const state = req.query.state || null;
- 
+
   if (state === null) {
     return res.send('state_mismatch');
   }
- 
+
   try {
     const tokenResponse = await axios.post('https://accounts.spotify.com/api/token',
       querystring.stringify({
@@ -66,7 +66,7 @@ app.get('/callback', async (req, res) => {
         'Authorization': 'Basic ' + Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64')
       }
     });
- 
+
     accessToken = tokenResponse.data.access_token;
     res.redirect('/');
   } catch (error) {
@@ -74,33 +74,42 @@ app.get('/callback', async (req, res) => {
     res.send('Failed to get access token.');
   }
 });
- 
+
 // HTMX endpoint to fetch and render the list of playlists
 app.get('/playlists', async (req, res) => {
   if (!accessToken) {
     return res.render('_login');
   }
- 
+
   try {
     const playlistsResponse = await axios.get('https://api.spotify.com/v1/me/playlists', {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
     });
- 
+
     const playlists = playlistsResponse.data.items;
     let html = '';
+    let renderedCount = 0;
     playlists.forEach(playlist => {
-      // HTMX attributes on the list item to fetch tracks on click
-      html += `<li hx-get="/tracks/${playlist.id}" hx-target="#tracks-list">${playlist.name}</li>`;
+      res.render('_playlist-item', { playlistId: playlist.id, playlistName: playlist.name }, (err, itemHtml) => {
+        if (err) {
+          console.error('Error rendering playlist item:', err);
+          itemHtml = '<p>Error rendering playlist.</p>';
+        }
+        html += itemHtml;
+        renderedCount++;
+        if (renderedCount === playlists.length) {
+          res.send(html);
+        }
+      });
     });
-    res.send(html);
   } catch (error) {
     console.error('Error fetching playlists:', error.response ? error.response.data : error.message);
     res.status(500).send('Failed to fetch playlists.');
   }
 });
- 
+
 // HTMX endpoint to fetch and render the tracks for a given playlist
 app.get('/tracks/:playlistId', async (req, res) => {
   if (!accessToken) {
@@ -108,14 +117,14 @@ app.get('/tracks/:playlistId', async (req, res) => {
   }
 
   const playlistId = req.params.playlistId;
- 
+
   try {
     const tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
     });
- 
+
     const tracks = tracksResponse.data.items;
     let html = '<table><thead><tr><th>Song Title</th><th>Artist</th><th>Album</th><th>Date Released</th></tr></thead><tbody>';
     tracks.forEach(item => {
@@ -124,14 +133,14 @@ app.get('/tracks/:playlistId', async (req, res) => {
       html += `<tr><td>${track.name}</td><td>${artists}</td><td>${track.album.name}</td><td>${track.album.release_date}</td></tr>`;
     });
     html += '</tbody></table>';
- 
+
     res.send(html);
   } catch (error) {
     console.error('Error fetching tracks:', error.response ? error.response.data : error.message);
     res.status(500).send('Failed to fetch tracks.');
   }
 });
- 
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
