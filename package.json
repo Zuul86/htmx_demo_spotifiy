@@ -12,6 +12,7 @@
   "dependencies": {
     "axios": "^1.12.2",
     "dotenv": "^17.2.2",
+    "ejs": "^3.1.10",
     "express": "^5.1.0",
     "htmx": "^0.0.2",
     "querystring": "^0.2.1"

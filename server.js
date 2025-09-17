@@ -4,6 +4,8 @@ const querystring = require('querystring');
 require('dotenv').config();
  
 const app = express();
+app.set('view engine', 'ejs');
+app.set('views','./views');
 const port = 8888;
  
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -25,42 +27,7 @@ const generateRandomString = (length) => {
  
 // Main HTML page with HTMX
 app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>Spotify Playlists</title>
-      <script src="https://unpkg.com/htmx.org@1.9.4"></script>
-      <style>
-        body { font-family: sans-serif; margin: 2em; }
-        .container { display: flex; gap: 2em; }
-        .playlists { flex: 1; border: 1px solid #ccc; padding: 1em; }
-        .tracks { flex: 2; border: 1px solid #ccc; padding: 1em; }
-        ul { list-style: none; padding: 0; }
-        li { padding: 0.5em; cursor: pointer; border-bottom: 1px solid #eee; }
-        li:hover { background-color: #f0f0f0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 0.5em; border-bottom: 1px solid #ddd; }
-        th { background-color: #f4f4f4; }
-      </style>
-    </head>
-    <body>
-      <h1>My Spotify Playlists</h1>
-      <a href="/login">Login with Spotify</a>
-      <div class="container">
-        <div id="playlists-container" class="playlists">
-          <button hx-get="/playlists" hx-trigger="click" hx-target="#playlists-list">Load Playlists</button>
-          <ul id="playlists-list"></ul>
-        </div>
-        <div id="tracks-container" class="tracks">
-          <h2>Select a Playlist</h2>
-          <div id="tracks-list"></div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `);
+  res.render('index');
 });
  
 // Route to start the Spotify authorization process
@@ -111,7 +78,7 @@ app.get('/callback', async (req, res) => {
 // HTMX endpoint to fetch and render the list of playlists
 app.get('/playlists', async (req, res) => {
   if (!accessToken) {
-    return res.send('Please <a href="/login">login with Spotify</a> first.');
+    return res.render('_login');
   }
  
   try {
